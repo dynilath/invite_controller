@@ -42,7 +42,7 @@ size_t member_increase(int64_t grpid) noexcept {
         time_point six_hour_ago = now - ::std::chrono::hours(6);
         pop_front_before(iter->second, six_hour_ago);
     } else {
-        auto &[n_iter, good] = group_member_counter.insert({grpid, time_deque_t()});
+        auto [n_iter, good] = group_member_counter.insert({grpid, time_deque_t()});
         iter = n_iter;
         iter->second.push_back(::std::chrono::system_clock::now());
     }

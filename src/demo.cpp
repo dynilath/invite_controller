@@ -117,7 +117,9 @@ CQ_INIT {
         global_usage_increase(is_command);
     });
 
-    on_message([](const MessageEvent &event) {
+    on_private_message([](const PrivateMessageEvent &event){
+        cq::logging::debug("test", "private message received");
+
         if (event.user_id != myid) return;
         catch_wrapper(event, [&event]() {
             for (auto &[cmd, callee] : command_vec) {
