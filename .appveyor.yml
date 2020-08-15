@@ -1,0 +1,27 @@
+image:
+  - Visual Studio 2017
+
+platform:
+  - x86
+
+configuration:
+  - Debug
+  - Release
+
+environment:
+  VCPKG_ROOT: C:\tools\vcpkg
+
+cache: c:\tools\vcpkg\installed\ -> bootstrap.ps1  # cache the installed vcpkg packages
+
+install:
+  - git submodule update --init --recursive
+
+build_script:
+  - powershell .\bootstrap.ps1 %CONFIGURATION%
+
+artifacts:
+  - path: './build/%CONFIGURATION%/app.dll'
+    name: dicebot.dll
+
+  - path: './app.json'
+    name: dicebot.json
