@@ -34,8 +34,8 @@ namespace {
 } // namespace
 
 size_t member_increase(int64_t grpid) noexcept {
+    ::std::unique_lock<::std::mutex>(member_counter_mutex);
     auto iter = group_member_counter.find(grpid);
-    member_counter_mutex.lock();
     if (iter != group_member_counter.end()) {
         time_point now = ::std::chrono::system_clock::now();
         iter->second.push_back(now);
@@ -46,7 +46,6 @@ size_t member_increase(int64_t grpid) noexcept {
         iter = n_iter;
         iter->second.push_back(::std::chrono::system_clock::now());
     }
-    member_counter_mutex.unlock();
 
     auto cnt = iter->second.size();
     if (cnt % 10 == 0) {
@@ -56,31 +55,30 @@ size_t member_increase(int64_t grpid) noexcept {
 }
 
 void usage_clear() noexcept {
-    message_counter_mutex.lock();
+    ::std::unique_lock<::std::mutex>(message_counter_mutex);
     for (auto &r : group_message_counter) {
         r.second = {0,0};
     }
-    message_counter_mutex.unlock();
 }
 
 void global_usage_increase(bool is_dice_call) noexcept {
     auto now = ::std::chrono::system_clock::now();
     auto an_hour_ago = now - ::std::chrono::hours(1);
-    global_message_counter_mutex.lock();
+    ::std::unique_lock<::std::mutex>(global_message_counter_mutex);
     pop_front_before(global_usage_counter, an_hour_ago);
     if(is_dice_call) global_usage_counter.push_back(now);
     pop_front_before(global_burden_counter, an_hour_ago);
     global_burden_counter.push_back(now);
-    global_message_counter_mutex.unlock();
 }
 
 ::std::pair<size_t, size_t> get_global_usage() noexcept {
+    ::std::unique_lock<::std::mutex>(global_message_counter_mutex);
     return {global_usage_counter.size(), global_burden_counter.size()};
 }
 
 void usage_increase(int64_t grpid, bool is_dice_call) noexcept {
     auto iter = group_message_counter.find(grpid);
-    message_counter_mutex.lock();
+    ::std::unique_lock<::std::mutex>(message_counter_mutex);
     if (iter != group_message_counter.end()) {
         iter->second.first += 1;
         if (is_dice_call) iter->second.second += 1;
@@ -90,20 +88,17 @@ void usage_increase(int64_t grpid, bool is_dice_call) noexcept {
         else
             group_message_counter[grpid] = {1, 0};
     }
-    message_counter_mutex.unlock();
 }
 
 void usage_remove(int64_t grpid) noexcept {
     if (group_message_counter.find(grpid) != group_message_counter.end()) {
-        message_counter_mutex.lock();
+        ::std::unique_lock<::std::mutex>(message_counter_mutex);
         group_message_counter.erase(grpid);
-        message_counter_mutex.unlock();
     }
 
     if (group_member_counter.find(grpid) != group_member_counter.end()) {
-        member_counter_mutex.lock();
+        ::std::unique_lock<::std::mutex>(member_counter_mutex);
         group_member_counter.erase(grpid);
-        member_counter_mutex.unlock();
     }
 }
 
@@ -111,9 +106,13 @@ void usage_remove(int64_t grpid) noexcept {
     using counter_type = decltype(group_message_counter);
     using v_type = ::std::pair<int64_t, msg_counter_t>;
     ::std::vector<v_type> sorter;
-    sorter.reserve(group_message_counter.size());
-    for (auto &r : group_message_counter) {
-        sorter.push_back({r.first, r.second});
+
+    {
+        ::std::unique_lock<::std::mutex>(message_counter_mutex);
+        sorter.reserve(group_message_counter.size());
+        for (auto &r : group_message_counter) {
+            sorter.push_back({r.first, r.second});
+        }
     }
 
     ::std::sort(
@@ -128,9 +127,13 @@ void usage_remove(int64_t grpid) noexcept {
     using counter_type = decltype(group_message_counter);
     using v_type = ::std::pair<int64_t, msg_counter_t>;
     ::std::vector<v_type> sorter;
-    sorter.reserve(group_message_counter.size());
-    for (auto &r : group_message_counter) {
-        sorter.push_back({r.first, r.second});
+
+    {
+        ::std::unique_lock<::std::mutex>(message_counter_mutex);
+        sorter.reserve(group_message_counter.size());
+        for (auto &r : group_message_counter) {
+            sorter.push_back({r.first, r.second});
+        }
     }
 
     ::std::sort(
@@ -142,6 +145,7 @@ void usage_remove(int64_t grpid) noexcept {
 
 msg_counter_t get_target_usage(int64_t grpid) noexcept {
     msg_counter_t ret = {0, 0};
+    ::std::unique_lock<::std::mutex>(message_counter_mutex);
     auto iter = group_message_counter.find(grpid);
     if (iter != group_message_counter.end()) {
         ret = iter->second;
